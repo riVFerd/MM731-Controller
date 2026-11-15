@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MM731 Control</title>
+<style>
+:root{--bg:#f6f6f4;--card:#fff;--fg:#1d1d1f;--muted:#6b6b70;--line:#e2e2df;--accent:#6d35d6;--err:#c0392b;--ok:#2e7d32}
+@media (prefers-color-scheme: dark){:root{--bg:#141416;--card:#1e1e22;--fg:#ececf0;--muted:#9a9aa3;--line:#30303a;--accent:#9d74ff;--err:#ff6b5b;--ok:#6fcf73}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 16px 48px}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+h1{font-size:20px;margin:0 auto 0 0}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:16px}
+@media (max-width:780px){.grid{grid-template-columns:1fr}}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 12px;font-weight:600}
+.row{display:flex;align-items:center;gap:10px;margin:8px 0}
+.row>label{width:96px;color:var(--muted);flex:none}
+.row input[type=range]{flex:1;min-width:0}
+.val{width:32px;text-align:right;font-variant-numeric:tabular-nums}
+select,input,button{font:inherit;color:inherit}
+select,input[type=number]{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 6px;min-width:0}
+input[type=number]{width:96px}
+input[type=color]{width:56px;height:30px;border:1px solid var(--line);border-radius:6px;background:none;padding:2px}
+button{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 14px;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button:disabled{opacity:.45;cursor:default}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;padding:3px 6px}
+th{color:var(--muted);font-weight:500;font-size:12px}
+td select{width:100%}
+td:first-child{color:var(--muted);white-space:nowrap}
+#status{color:var(--muted);min-height:1.4em;margin:0 0 16px}
+#status.err{color:var(--err)}#status.ok{color:var(--ok)}
+.actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.hint{color:var(--muted);font-size:12px;margin:10px 0 0}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>MM731 Control</h1>
+  <button id="connect" class="primary">Connect mouse</button>
+</header>
+<p id="status">Close MasterPlus+ first, then click “Connect mouse” and pick the Cooler Master device.</p>
+
+<div class="grid">
+  <div>
+    <section>
+      <h2>Lighting</h2>
+      <div class="row"><label for="mode">Mode</label>
+        <select id="mode"><option>static</option><option>breathing</option><option>cycle</option><option>off</option></select></div>
+      <div class="row"><label for="colour">Colour</label><input type="color" id="colour" value="#ff0000"></div>
+      <div class="row"><label for="bright">Brightness</label><input type="range" id="bright" min="0" max="255"><span class="val" id="brightV"></span></div>
+      <div class="row"><label for="speed">Speed</label><input type="range" id="speed" min="1" max="5"><span class="val" id="speedV"></span></div>
+    </section>
+    <section>
+      <h2>Performance</h2>
+      <table><thead><tr><th>Stage</th><th>DPI</th><th>Active</th></tr></thead><tbody id="dpi"></tbody></table>
+      <div class="row"><label for="poll">Polling</label>
+        <select id="poll"><option value="125">125 Hz</option><option value="250">250 Hz</option><option value="500">500 Hz</option><option value="1000">1000 Hz</option></select></div>
+      <div class="row"><label for="lod">Lift-off</label><select id="lod"><option>low</option><option>high</option></select></div>
+    </section>
+  </div>
+  <section>
+    <h2>Buttons</h2>
+    <table><thead><tr><th>Button</th><th>Normal</th><th>Hold middle +</th></tr></thead><tbody id="buttons"></tbody></table>
+    <p class="hint">Left click and the combo key (middle in the right column) are locked so you can't lock yourself out.</p>
+  </section>
+</div>
+
+<div class="actions">
+  <button id="reload" disabled>Reload</button>
+  <button id="apply" disabled>Apply</button>
+  <button id="save" class="primary" disabled>Save to mouse</button>
+</div>
+<p class="hint" style="text-align:right">Apply = live, lost on power-off. Save to mouse = written to the mouse's memory.</p>
+</main>
+
+<script>
+"use strict";
+// ---- protocol (712 family, decoded from MasterPlus+ captures; see mm731.py) ----
+const VID = 0x2516, USAGE_PAGE = 0xFF0A;
+const BLOCK = [0x84, 0x01, 0x02, 0x03], BTN = [0x82, 0x01], CHUNK = 19;
+const DPI_ACTIVE = 1, DPI_TABLE = 16, DPI_STAGES = 7, POLL = 7, LOD = 0;
+const POLL_CODES = {125: 1, 250: 2, 500: 3, 1000: 4}, LOD_CODES = {low: 0, high: 2};
+const MODES = ["static", "breathing", "cycle", "off"];
+const BASE = ["left", "right", "middle", "back", "forward", "dpi", "wheel-up", "wheel-down"];
+const BUTTONS = [...BASE, ...BASE.map(b => "combo-" + b)];
+const LOCKED = new Set(["left", "combo-middle"]);
+const FUNCS = {none: [0, 0], left: [0xA5, 0], right: [0xA6, 0], middle: [0xA7, 0], back: [0xA9, 0],
+  forward: [0xAA, 0], "dpi-cycle": [0xFD, 0x15], "scroll-up": [0xAD, 0x01], "scroll-down": [0xAD, 0xFF],
+  "play-pause": [0xEC, 0], "volume-up": [0xE8, 0], "volume-down": [0xE9, 0], mute: [0xEA, 0], stop: [0xEB, 0],
+  "next-track": [0xED, 0], "prev-track": [0xEE, 0], "led-mode": [0xFD, 0x2A], "led-color": [0xFD, 0x20],
+  "combo-key": [0xFE, 0]};
+const KEYS = {};
+for (let i = 0; i < 26; i++) KEYS[String.fromCharCode(97 + i)] = 0x04 + i;
+for (let i = 0; i < 10; i++) KEYS[String((i + 1) % 10)] = 0x1E + i;
+for (let i = 0; i < 12; i++) KEYS["f" + (i + 1)] = 0x3A + i;
+Object.assign(KEYS, {enter: 0x28, esc: 0x29, backspace: 0x2A, tab: 0x2B, space: 0x2C, printscreen: 0x46,
+  insert: 0x49, home: 0x4A, pageup: 0x4B, delete: 0x4C, end: 0x4D, pagedown: 0x4E, "right-arrow": 0x4F,
+  "left-arrow": 0x50, "down-arrow": 0x51, "up-arrow": 0x52, ctrl: 0xE0, shift: 0xE1, alt: 0xE2, win: 0xE3});
+for (const [k, v] of Object.entries(KEYS)) FUNCS["key:" + k] = [v, 0];
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const hex = a => [...a].map(b => b.toString(16).padStart(2, "0")).join(" ");
+
+class Mouse {
+  constructor(dev) {
+    this.dev = dev;
+    this.waiters = [];
+    // Output report size from the descriptor (32 bytes on the MM731 dongle); Chrome rejects any other length.
+    const out = dev.collections.flatMap(c => c.outputReports || [])[0];
+    this.size = out ? out.items.reduce((n, it) => n + it.reportSize * it.reportCount, 0) / 8 : 32;
+    dev.addEventListener("inputreport", e => {
+      const d = new Uint8Array(e.data.buffer, e.data.byteOffset, e.data.byteLength);
+      const i = this.waiters.findIndex(w => w.want.every((b, j) => d[j] === b));
+      if (i >= 0) this.waiters.splice(i, 1)[0].resolve(d.slice());   // unmatched (e.g. 47 81 70 status) dropped
+    });
+  }
+  // Send one report and wait for the reply starting with `want`.
+  // strict: retry (a sleeping wireless mouse drops the first request) and throw if nothing comes back.
+  async xfer(bytes, want, strict = true) {
+    const buf = new Uint8Array(this.size);
+    buf.set(bytes);
+    for (let attempt = 0; attempt < (strict ? 3 : 1); attempt++) {
+      const reply = new Promise(resolve => {
+        const w = {want, resolve};
+        this.waiters.push(w);
+        setTimeout(() => { const i = this.waiters.indexOf(w); if (i >= 0) { this.waiters.splice(i, 1); resolve(null); } }, 400);
+      });
+      await this.dev.sendReport(0, buf);
+      const r = await reply;
+      if (r) return r;
+    }
+    if (strict) throw new Error(`no reply to ${hex(bytes.slice(0, 3))}`);
+    return null;
+  }
+  write(bytes) { return this.xfer(bytes, [bytes[0] + 1, bytes[1]], false); }   // echo is cmd+1
+  init() { return this.xfer([0x44, 0x81, 0x02], [0x45, 0x81]); }
+
+  async readLighting() {
+    await this.init();
+    const mode = (await this.xfer([0x4C, 0x81, 0x07], [0x4D, 0x81, 0x07]))[3];
+    const per = {};
+    for (let m = 0; m < 3; m++) {
+      const r = await this.xfer([0x4C, 0x81, 0x03, m], [0x4D, 0x81, 0x03]);
+      per[m] = {bright: r[4], speed: r[5], rgb: [r[6], r[7], r[8]]};
+    }
+    return {mode, per};
+  }
+  async setLighting(mode, [r, g, b], bright, speed) {
+    const m = MODES.indexOf(mode);
+    await this.init();
+    if (mode !== "off") await this.write([0x4C, 0x81, 0x04, m, 0xFF, bright, speed - 1, r, g, b, 0xFF]);
+    for (let i = 0; i < 4; i++) {            // mode switch is sometimes ignored: verify and resend
+      await this.write([0x4C, 0x81, 0x08, m]);
+      await sleep(50);
+      if ((await this.xfer([0x4C, 0x81, 0x07], [0x4D, 0x81, 0x07]))[3] === m) return;
+    }
+    throw new Error(`mouse did not switch to lighting mode ${mode}`);
+  }
+  async readBlock() {
+    await this.init();
+    const p = [];
+    for (let n = 0; n < 4; n++) p.push(...(await this.xfer([0x4A, 0x81, 0x01, n], [0x4B, BLOCK[n]])).slice(3, 3 + CHUNK));
+    return p;
+  }
+  async writeBlock(p) {
+    await this.init();
+    for (let n = 0; n < 4; n++) await this.write([0x4A, BLOCK[n], 0x02, ...p.slice(n * CHUNK, (n + 1) * CHUNK)]);
+    await this.write([0x5C, 0x81, 0x02, 0x03]);
+  }
+  async readButtons() {
+    await this.init();
+    const s = [];
+    for (let n = 0; n < 2; n++) s.push(...(await this.xfer([0x48, 0x81, 0x01, n], [0x49, BTN[n]])).slice(3, 3 + CHUNK));
+    return s;
+  }
+  async writeButtons(s) {
+    await this.init();
+    await this.write([0x48, 0x81, 0x06, 0x01]);
+    for (let n = 0; n < 2; n++) await this.write([0x48, BTN[n], 0x02, ...s.slice(n * CHUNK, (n + 1) * CHUNK)]);
+  }
+  save() { return this.xfer([0x54, 0x81, 0x01], [0x55, 0x81], false); }
+}
+
+// ---- UI ----
+const $ = id => document.getElementById(id);
+let mouse = null, per = {}, busy = false;
+
+function status(msg, kind = "") { $("status").textContent = msg; $("status").className = kind; }
+const toHex = rgb => "#" + rgb.map(v => v.toString(16).padStart(2, "0")).join("");
+const fromHex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const u16 = (p, o) => p[o] | (p[o + 1] << 8);
+
+function buildUI() {
+  $("dpi").innerHTML = Array.from({length: DPI_STAGES}, (_, k) =>
+    `<tr><td>${k + 1}</td><td><input type="number" id="dpi${k}" min="100" max="19000" step="100"></td>` +
+    `<td><input type="radio" name="active" value="${k}" aria-label="Stage ${k + 1} active"></td></tr>`).join("");
+  const opts = Object.keys(FUNCS).filter(f => !f.startsWith("key:")).sort()
+    .concat(Object.keys(FUNCS).filter(f => f.startsWith("key:")));
+  $("buttons").innerHTML = BASE.map(b => `<tr><td>${b}</td>` + [b, "combo-" + b].map(n =>
+    `<td><select id="btn-${n}" ${LOCKED.has(n) ? "disabled" : ""} aria-label="${n}">` +
+    opts.map(o => `<option>${o}</option>`).join("") + `</select></td>`).join("") + `</tr>`).join("");
+  for (const id of ["bright", "speed"]) $(id).addEventListener("input", () => $(id + "V").textContent = $(id).value);
+  $("mode").addEventListener("change", showMode);
+}
+
+function showMode() {
+  const m = MODES.indexOf($("mode").value);
+  if (!per[m]) return;
+  $("colour").value = toHex(per[m].rgb);
+  $("bright").value = per[m].bright;
+  $("speed").value = Math.min(Math.max(per[m].speed + 1, 1), 5);
+  for (const id of ["bright", "speed"]) $(id + "V").textContent = $(id).value;
+}
+
+function labelOf(code) {
+  const name = Object.keys(FUNCS).find(k => FUNCS[k][0] === code[0] && FUNCS[k][1] === code[1]);
+  if (name) return name;
+  return code[0] === 0xFF ? `macro ${code[1]} (keep)` : `raw ${hex(code)}`;
+}
+
+function setBusy(b) {
+  busy = b;
+  for (const id of ["reload", "apply", "save"]) $(id).disabled = b || !mouse;
+}
+
+async function run(label, fn) {
+  if (busy) return;
+  setBusy(true);
+  status(label + "…");
+  try { await fn(); }
+  catch (e) { status(`Error: ${e.message}. Is MasterPlus+ closed and the mouse awake? Try Reload.`, "err"); }
+  finally { setBusy(false); }
+}
+
+async function reload() {
+  const L = await mouse.readLighting();
+  const p = await mouse.readBlock();
+  const s = await mouse.readButtons();
+  per = L.per;
+  $("mode").value = MODES[L.mode] || "static";
+  showMode();
+  for (let k = 0; k < DPI_STAGES; k++) $("dpi" + k).value = u16(p, DPI_TABLE + 4 * k);
+  const r = document.querySelector(`input[name=active][value="${p[DPI_ACTIVE]}"]`);
+  if (r) r.checked = true;
+  $("poll").value = Object.keys(POLL_CODES).find(h => POLL_CODES[h] === p[POLL]) || "1000";
+  $("lod").value = Object.keys(LOD_CODES).find(n => LOD_CODES[n] === p[LOD]) || "low";
+  BUTTONS.forEach((b, i) => {
+    const sel = $("btn-" + b), label = labelOf([s[1 + 2 * i], s[2 + 2 * i]]);
+    if (![...sel.options].some(o => o.value === label)) sel.add(new Option(label, label), 0);
+    sel.value = label;
+  });
+  status(`Loaded from ${mouse.dev.productName || "mouse"}.`, "ok");
+}
+
+async function apply(save) {
+  const dpis = [];
+  for (let k = 0; k < DPI_STAGES; k++) {
+    const x = Number($("dpi" + k).value);
+    if (!Number.isInteger(x) || x < 100 || x > 19000 || x % 100) throw new Error(`DPI stage ${k + 1} must be 100–19000 in steps of 100`);
+    dpis.push(x);
+  }
+  const mode = $("mode").value, rgb = fromHex($("colour").value);
+  const bright = Number($("bright").value), speed = Number($("speed").value);
+  await mouse.setLighting(mode, rgb, bright, speed);
+  if (mode !== "off") per[MODES.indexOf(mode)] = {bright, speed: speed - 1, rgb};
+
+  const p = await mouse.readBlock(), old = p.join();
+  dpis.forEach((x, k) => { const o = DPI_TABLE + 4 * k; p[o] = p[o + 2] = x & 0xFF; p[o + 1] = p[o + 3] = x >> 8; });
+  const act = document.querySelector("input[name=active]:checked");
+  if (act) p[DPI_ACTIVE] = Number(act.value);
+  p[POLL] = POLL_CODES[$("poll").value];
+  p[LOD] = LOD_CODES[$("lod").value];
+  if (p.join() !== old) await mouse.writeBlock(p);
+
+  const s = await mouse.readButtons(), oldS = s.join();
+  BUTTONS.forEach((b, i) => {
+    const v = $("btn-" + b).value;
+    const code = FUNCS[v] || (v.startsWith("raw ") ? v.slice(4).split(" ").map(h => parseInt(h, 16)) : null);
+    if (code) { s[1 + 2 * i] = code[0]; s[2 + 2 * i] = code[1]; }
+  });
+  if (s.join() !== oldS) await mouse.writeButtons(s);
+  if (save) await mouse.save();
+  status(save ? "Saved to mouse." : "Applied live (not saved: lost on power-off).", "ok");
+}
+
+async function useDevice(dev) {
+  if (!dev.opened) await dev.open();
+  mouse = new Mouse(dev);
+  setBusy(false);
+  $("connect").textContent = "Connected";
+  await run("Reading mouse", reload);
+}
+
+function vendorOnly(devs) {
+  return devs.filter(d => d.vendorId === VID && d.collections.some(c => c.usagePage === USAGE_PAGE));
+}
+
+buildUI();
+if (!("hid" in navigator)) {
+  status("This browser has no WebHID. Open this page in Chrome or Edge.", "err");
+  $("connect").disabled = true;
+} else {
+  $("connect").addEventListener("click", async () => {
+    try {
+      const devs = vendorOnly(await navigator.hid.requestDevice({filters: [{vendorId: VID, usagePage: USAGE_PAGE}]}));
+      if (devs.length) await useDevice(devs[0]);
+      else status("No device picked.");
+    } catch (e) { status(`Could not open the mouse: ${e.message}`, "err"); }
+  });
+  $("reload").addEventListener("click", () => run("Reading mouse", reload));
+  $("apply").addEventListener("click", () => run("Applying", () => apply(false)));
+  $("save").addEventListener("click", () => run("Saving", () => apply(true)));
+  navigator.hid.addEventListener("disconnect", e => {
+    if (mouse && e.device === mouse.dev) { mouse = null; setBusy(false); $("connect").textContent = "Connect mouse";
+      status("Mouse disconnected. Plug it back in and click Connect.", "err"); }
+  });
+  navigator.hid.getDevices().then(d => { const v = vendorOnly(d); if (v.length) useDevice(v[0]).catch(() => {}); });
+}
+</script>
+</body>
+</html>
