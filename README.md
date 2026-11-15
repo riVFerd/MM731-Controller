@@ -15,7 +15,7 @@ It also unlocks a few things MasterPlus+ doesn't offer: media keys (volume, next
 ## How to use it
 
 1. **Quit MasterPlus+ completely**, including its icon in the system tray. While it runs, the mouse ignores everything else.
-2. Open `mm731.html` in **Chrome** or **Edge**. Other browsers can't talk to USB devices.
+2. Open **<https://rivferd.github.io/MM731-Controller/>** in **Chrome** or **Edge** (or open `index.html` from a download of this repo). Other browsers can't talk to USB devices.
 3. Click **Connect mouse** and pick the Cooler Master device in the list.
 4. Make your changes, then:
    - **Apply** tries them right away. They're gone when the mouse is switched off.
@@ -42,7 +42,7 @@ The mouse keeps **separate settings for the cable and the wireless dongle**. To 
 
 ## Hosting it
 
-The page is a single file, so you can open it straight from your disk or host it anywhere that serves HTTPS, such as GitHub Pages. WebHID needs a secure page (HTTPS or a local file).
+The page is a single file (`index.html`) published with GitHub Pages. You can also open it straight from your disk or host it anywhere that serves HTTPS. WebHID needs a secure page (HTTPS or a local file).
 
 ## For developers
 
