@@ -28,8 +28,10 @@ The browser remembers the permission, so next time the page reconnects by itself
 | Connection | Status |
 |---|---|
 | 2.4 GHz wireless dongle | Tested |
-| USB cable | Not tested yet |
+| USB cable | Tested |
 | Bluetooth | Not tested yet |
+
+The mouse keeps **separate settings for the cable and the wireless dongle**. To get the same setup in both, connect each way once and click **Save to mouse**.
 
 ## If something goes wrong
 

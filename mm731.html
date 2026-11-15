@@ -222,7 +222,6 @@ input[type=color]{width:44px;height:32px;padding:2px;border:1px solid var(--line
 "use strict";
 // ---- protocol (712 family, decoded from MasterPlus+ captures; see mm731.py) ----
 const VID = 0x2516, USAGE_PAGE = 0xFF0A;
-const BLOCK = [0x84, 0x01, 0x02, 0x03], BTN = [0x82, 0x01], CHUNK = 19;
 const DPI_ACTIVE = 1, DPI_TABLE = 16, DPI_STAGES = 7, POLL = 7, LOD = 0;
 const POLL_CODES = {125: 1, 250: 2, 500: 3, 1000: 4}, LOD_CODES = {low: 0, high: 2};
 const MODES = ["static", "breathing", "cycle", "off"];
@@ -306,27 +305,34 @@ class Mouse {
     }
     throw new Error(`the mouse didn't switch to the ${mode} effect`);
   }
-  async readBlock() {
+  // Settings block (cmd 4A) and button table (cmd 48) are sent in chunks. The first chunk's id is
+  // 0x80 + chunk count, the rest are 01..count-1. The dongle uses 19-byte chunks (block: 4, buttons: 2);
+  // the USB cable uses 61-byte chunks (block: 2, buttons: 1). The payload layout is the same either way.
+  get chunk() { return this.size >= 64 ? 61 : 19; }
+  async readChunks(cmd) {
     await this.init();
-    const p = [];
-    for (let n = 0; n < 4; n++) p.push(...(await this.xfer([0x4A, 0x81, 0x01, n], [0x4B, BLOCK[n]])).slice(3, 3 + CHUNK));
+    const first = await this.xfer([cmd, 0x81, 0x01, 0], [cmd + 1]);
+    if (!(first[1] & 0x80)) throw new Error(`unexpected reply ${hex(first.slice(0, 3))}`);
+    const count = first[1] & 0x7F, p = [...first.slice(3, 3 + this.chunk)];
+    for (let n = 1; n < count; n++) p.push(...(await this.xfer([cmd, 0x81, 0x01, n], [cmd + 1, n])).slice(3, 3 + this.chunk));
     return p;
   }
+  async writeChunks(cmd, p) {
+    const count = p.length / this.chunk;
+    for (let n = 0; n < count; n++)
+      await this.write([cmd, n ? n : 0x80 | count, 0x02, ...p.slice(n * this.chunk, (n + 1) * this.chunk)]);
+  }
+  readBlock() { return this.readChunks(0x4A); }
   async writeBlock(p) {
     await this.init();
-    for (let n = 0; n < 4; n++) await this.write([0x4A, BLOCK[n], 0x02, ...p.slice(n * CHUNK, (n + 1) * CHUNK)]);
+    await this.writeChunks(0x4A, p);
     await this.write([0x5C, 0x81, 0x02, 0x03]);
   }
-  async readButtons() {
-    await this.init();
-    const s = [];
-    for (let n = 0; n < 2; n++) s.push(...(await this.xfer([0x48, 0x81, 0x01, n], [0x49, BTN[n]])).slice(3, 3 + CHUNK));
-    return s;
-  }
+  readButtons() { return this.readChunks(0x48); }
   async writeButtons(s) {
     await this.init();
     await this.write([0x48, 0x81, 0x06, 0x01]);
-    for (let n = 0; n < 2; n++) await this.write([0x48, BTN[n], 0x02, ...s.slice(n * CHUNK, (n + 1) * CHUNK)]);
+    await this.writeChunks(0x48, s);
   }
   save() { return this.xfer([0x54, 0x81, 0x01], [0x55, 0x81], false); }
 }
