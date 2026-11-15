@@ -1,61 +1,53 @@
-# mm731-tool
+# MM731 Control
 
-A small open-source replacement for MasterPlus+ on the Cooler Master MM731. This is an early prototype: it does lighting for now, and DPI, polling rate and buttons come next once they are decoded.
+A small webpage that replaces Cooler Master MasterPlus+ for the **Cooler Master MM731** mouse. It runs in your browser, needs nothing installed, and talks to the mouse directly over USB.
 
-## Setup (Windows)
+It also unlocks a few things MasterPlus+ doesn't offer: media keys (volume, next/previous track, stop, mute), a combo action on the DPI button, and moving the combo key to any button.
 
-```
-pip install hidapi
-```
+## What you can change
 
-**Fully quit MasterPlus+ first**, including its tray icon. It holds the mouse open. Plug the mouse in with the **USB cable** for now.
+- **Buttons:** every button, plus a second "combo" action for each one that fires while you hold the combo key. Choose mouse clicks, DPI cycle, media keys, LED controls or keyboard keys (letters, numbers, F1–F12, arrows, Ctrl, Shift, Alt, Win and more).
+- **Lighting:** static, breathing, colour cycle or off, with colour, brightness and speed.
+- **Sensitivity:** all 7 DPI stages and which one the mouse starts on.
+- **Polling rate:** 125, 250, 500 or 1000 Hz.
+- **Lift-off distance:** low or high.
 
-## Step 1: find the right channel
+## How to use it
 
-```
-python mm731.py list
-python mm731.py probe
-```
+1. **Quit MasterPlus+ completely**, including its icon in the system tray. While it runs, the mouse ignores everything else.
+2. Open `mm731.html` in **Chrome** or **Edge**. Other browsers can't talk to USB devices.
+3. Click **Connect mouse** and pick the Cooler Master device in the list.
+4. Make your changes, then:
+   - **Apply** tries them right away. They're gone when the mouse is switched off.
+   - **Save to mouse** keeps them in the mouse's memory, so they work on any PC, even without this page.
 
-`list` shows every Cooler Master HID interface. The ones marked "vendor interface" are where settings go.
+The browser remembers the permission, so next time the page reconnects by itself.
 
-`probe` sends **read-only** status queries in both known Cooler Master mouse protocols:
+## Supported setups
 
-| family | used by | interface / usage page | a real reply starts with |
-|---|---|---|---|
-| `730` | MM730 (the MM731's wired twin), MM711, MM720 | 1 / `0xFF00` | `52 ...` for a `52` query |
-| `712` | MM712 (tri-mode wireless) | 3 / `0xFF0A` | `4d 81 ...` for a `4c 81` query |
+| Connection | Status |
+|---|---|
+| 2.4 GHz wireless dongle | Tested |
+| USB cable | Not tested yet |
+| Bluetooth | Not tested yet |
 
-Send me the full `probe` output and I'll tell you which family the mouse speaks.
+## If something goes wrong
 
-## Step 2: lighting
+- **"The mouse didn't answer"**: the wireless mouse goes to sleep when idle. Move it, then click **Reload**. Also check that MasterPlus+ isn't running in the tray.
+- **The Connect list is empty**: plug the dongle back in and refresh the page.
+- **"This browser can't talk to USB devices"**: use Chrome or Edge.
+- **Settings look wrong after a change**: switch the mouse off and on. Anything you applied without saving goes back to the last saved settings.
 
-Always try `--dry-run` first. It prints the packets without sending them.
+## Hosting it
 
-```
-python mm731.py --family 730 --interface 1 --dry-run color ff0000
-python mm731.py --family 730 --interface 1 color ff0000
-python mm731.py --family 730 --interface 1 color 00ffff --mode breathing --speed 4
-python mm731.py --family 730 --interface 1 off
-```
+The page is a single file, so you can open it straight from your disk or host it anywhere that serves HTTPS, such as GitHub Pages. WebHID needs a secure page (HTTPS or a local file).
 
-Changes are temporary by default. Add `--save` to write them to the mouse's onboard flash.
+## For developers
 
-## Step 3: decode DPI, polling and buttons
+`mm731.py` is the command-line tool used to decode and test the protocol. `capdiff.py` and the `captures/` folder are the USB captures it was decoded from. See [DEVELOPMENT.md](DEVELOPMENT.md).
 
-OpenRGB only covers lighting. For everything else, record what MasterPlus+ sends:
+The protocol was worked out from USB captures of MasterPlus+ and from OpenRGB's code for related Cooler Master mice (`CMMMController`, `CMMM712Controller`).
 
-1. Install Wireshark and tick **USBPcap** during setup.
-2. Capture on the USBPcap hub the mouse is on. Change **one** setting in MasterPlus+, then stop. Save it as, say, `dpi_800.pcapng`.
-3. Repeat with one other value, for example `dpi_1600.pcapng`.
-4. Run `python capdiff.py dpi_800.pcapng dpi_1600.pcapng`.
+## Disclaimer
 
-The bytes that changed are the setting. Once the pattern is clear, test it with `mm731.py raw <hex bytes>` and then add a real command for it.
-
-## Safety
-
-- Never replay packets captured during a **firmware update**.
-- Read-only queries and lighting changes are low risk. A mouse normally ignores packets it doesn't understand.
-- If the mouse ever acts strangely, unplug it and plug it back in. Changes made without `--save` don't survive that.
-
-Packet layouts come from OpenRGB (GPL-2.0-or-later): `CMMMController` and `CMMM712Controller`.
+This is an unofficial tool and isn't affiliated with or endorsed by Cooler Master. It only sends the same kinds of settings commands MasterPlus+ sends and never touches the firmware. Use it at your own risk.

@@ -21,7 +21,7 @@ Replace Cooler Master MasterPlus+, which keeps crashing and freezing, with a sma
 - `mm731.html`: **the main app.** Single-file WebHID page (Chrome/Edge, no install): clickable SVG mouse for remapping (combo layer, media keys, keyboard keys, movable combo key), lighting with live LED preview, 7 DPI stages, polling, lift-off. Apply = live, Save to mouse = flash. JS port of the protocol; keep it in sync with `mm731.py`. Verified on the mouse by the user.
 - The tkinter desktop app was removed (2026-11-15); the user chose the webpage only.
 - `test_dpi.py`: offline checks of the block/button codecs against captured bytes.
-- `README.md`: user-facing setup and usage guide.
+- `README.md`: user-facing guide for the webpage. `DEVELOPMENT.md`: the old CLI/decoding guide (renamed from the prototype README).
 - Wireless mouse sleeps when idle and drops the first request; `Dev.xfer` resends once on an empty read.
 - The LED mode switch (`4C 81 08 <mode>`) is sometimes ignored right after the colour write; `Family712.set` re-reads `4C 81 07` and resends until it sticks.
 
