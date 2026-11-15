@@ -15,7 +15,7 @@ It also unlocks a few things MasterPlus+ doesn't offer: media keys (volume, next
 ## How to use it
 
 1. **Quit MasterPlus+ completely**, including its icon in the system tray. While it runs, the mouse ignores everything else.
-2. Open **<https://rivferd.github.io/MM731-Controller/>** in **Chrome** or **Edge** (or open `index.html` from a download of this repo). Other browsers can't talk to USB devices.
+2. Open **<https://mm731.virgyferdian.my.id>** in **Chrome** or **Edge** (or open `index.html` from a download of this repo). Other browsers can't talk to USB devices.
 3. Click **Connect mouse** and pick the Cooler Master device in the list.
 4. Make your changes, then:
    - **Apply** tries them right away. They're gone when the mouse is switched off.
