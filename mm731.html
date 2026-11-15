@@ -4,80 +4,219 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MM731 Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f6f6f4;--card:#fff;--fg:#1d1d1f;--muted:#6b6b70;--line:#e2e2df;--accent:#6d35d6;--err:#c0392b;--ok:#2e7d32}
-@media (prefers-color-scheme: dark){:root{--bg:#141416;--card:#1e1e22;--fg:#ececf0;--muted:#9a9aa3;--line:#30303a;--accent:#9d74ff;--err:#ff6b5b;--ok:#6fcf73}}
+:root{
+  --paper:#EEF0F2; --surface:#FFFFFF; --ink:#1A1D21; --muted:#5E6670; --line:#D5D9DE;
+  --shell:#2A2E34; --shell-edge:#1C1F23; --shell-hi:#3A3F47;
+  --led:#6d35d6; --led-ink:#fff; --err:#B3261E; --ok:#1E7B45;
+  --radius:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#17191C; --surface:#202328; --ink:#E8EAED; --muted:#9AA1AA; --line:#33373D;
+  --shell:#0F1113; --shell-edge:#4A505A; --shell-hi:#262A30; --err:#FF8A80; --ok:#7BD99B;
+}}
+:root[data-theme="dark"]{
+  --paper:#17191C; --surface:#202328; --ink:#E8EAED; --muted:#9AA1AA; --line:#33373D;
+  --shell:#0F1113; --shell-edge:#4A505A; --shell-hi:#262A30; --err:#FF8A80; --ok:#7BD99B;
+}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
-main{max-width:1000px;margin:0 auto;padding:24px 16px 48px}
-header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-h1{font-size:20px;margin:0 auto 0 0}
-.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:16px}
-@media (max-width:780px){.grid{grid-template-columns:1fr}}
-section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
-h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 12px;font-weight:600}
-.row{display:flex;align-items:center;gap:10px;margin:8px 0}
-.row>label{width:96px;color:var(--muted);flex:none}
-.row input[type=range]{flex:1;min-width:0}
-.val{width:32px;text-align:right;font-variant-numeric:tabular-nums}
-select,input,button{font:inherit;color:inherit}
-select,input[type=number]{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 6px;min-width:0}
-input[type=number]{width:96px}
-input[type=color]{width:56px;height:30px;border:1px solid var(--line);border-radius:6px;background:none;padding:2px}
-button{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 14px;cursor:pointer}
-button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-button:disabled{opacity:.45;cursor:default}
-table{border-collapse:collapse;width:100%}
-th,td{text-align:left;padding:3px 6px}
-th{color:var(--muted);font-weight:500;font-size:12px}
-td select{width:100%}
-td:first-child{color:var(--muted);white-space:nowrap}
-#status{color:var(--muted);min-height:1.4em;margin:0 0 16px}
-#status.err{color:var(--err)}#status.ok{color:var(--ok)}
-.actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
-.hint{color:var(--muted);font-size:12px;margin:10px 0 0}
+html{background:var(--paper)}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:15px/1.5 "Barlow",system-ui,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
+main{max-width:1120px;margin:0 auto;padding:20px 16px 112px}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--led);outline-offset:2px}
+
+/* header */
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+h1{font-size:26px;font-weight:700;letter-spacing:-.01em;margin:0}
+h1 small{font-weight:500;color:var(--muted);font-size:16px;margin-left:6px}
+.pill{display:inline-flex;align-items:center;gap:8px;margin-left:auto;padding:5px 12px;border:1px solid var(--line);
+  border-radius:999px;background:var(--surface);color:var(--muted);font-size:14px;max-width:100%}
+.pill i{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.pill.ok i{background:var(--ok)} .pill.err i{background:var(--err)} .pill.err{color:var(--err)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:500}
+.btn:hover:not(:disabled){border-color:var(--muted)}
+.btn.primary{background:var(--led);border-color:var(--led);color:var(--led-ink)}
+.btn:disabled{opacity:.45;cursor:default}
+
+/* layout */
+.layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){.layout{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px 18px 20px}
+.panel+.panel{margin-top:20px}
+h2{font-size:18px;font-weight:600;margin:0 0 14px}
+h3{font-size:16px;font-weight:600;margin:0}
+.sub{color:var(--muted);font-size:14px;margin:2px 0 0}
+
+/* mouse */
+.stage{padding:8px 8px 0}
+svg.mouse{display:block;width:100%;max-width:600px;margin:0 auto;height:auto}
+.shell{fill:var(--shell);stroke:var(--shell-edge);stroke-width:2}
+.seam{fill:none;stroke:var(--shell-edge);stroke-width:2.5}
+.hot{cursor:pointer}
+.hot .face{fill:var(--shell-hi);stroke:var(--shell-edge);stroke-width:2;transition:fill .15s}
+.hot:hover .face{fill:color-mix(in srgb,var(--shell-hi) 70%,var(--led))}
+.hot.sel .face{fill:color-mix(in srgb,var(--shell-hi) 45%,var(--led));stroke:var(--led);stroke-width:2.5}
+.hot:focus{outline:none}
+.hot:focus-visible .face{stroke:var(--led);stroke-width:3}
+.leader{stroke:var(--line);stroke-width:1.5;fill:none}
+.hot.under .face{stroke-dasharray:6 4}
+.caption{font-size:13px;fill:var(--muted)}
+.tag{font-size:15px;fill:var(--ink);font-weight:600}
+.tag .alt{fill:var(--muted);font-weight:400;font-size:13px}
+.tag.sel{fill:var(--led)}
+.glow{fill:var(--led);filter:url(#blur)}
+.logo{fill:none;stroke:var(--led);stroke-width:2.5}
+.lit.breathing .glow,.lit.breathing .logo{animation:breathe 3s ease-in-out infinite}
+.lit.cycle{animation:hue 6s linear infinite}
+.lit.off .glow{opacity:0}.lit.off .logo{stroke:var(--shell-edge)}
+@keyframes breathe{50%{opacity:.15}}
+@keyframes hue{to{filter:hue-rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.lit *,.lit{animation:none!important}}
+
+/* button editor */
+.editor h3{font-size:18px}
+.editor table{width:100%;border-collapse:collapse;margin-top:12px}
+.editor th{font-size:13px;font-weight:500;color:var(--muted);text-align:left;padding:0 8px 6px 0}
+.editor td{padding:4px 8px 4px 0;vertical-align:middle}
+.editor td:first-child{color:var(--muted);white-space:nowrap;width:1%}
+select{width:100%;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+select:disabled{opacity:.6}
+.note{color:var(--muted);font-size:13px;margin:10px 0 0}
+
+/* controls */
+.field{display:grid;grid-template-columns:96px minmax(0,1fr);align-items:center;gap:12px;margin:12px 0}
+.field>span:first-child{color:var(--muted)}
+.seg{display:flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:max-content;max-width:100%}
+.seg label{position:relative}
+.seg input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.seg span{display:block;padding:6px 12px;border-left:1px solid var(--line);color:var(--muted);cursor:pointer}
+.seg label:first-child span{border-left:0}
+.seg input:checked+span{background:var(--led);color:var(--led-ink)}
+.seg input:focus-visible+span{outline:2px solid var(--led);outline-offset:-3px}
+.range{display:flex;align-items:center;gap:10px}
+.range input{flex:1;min-width:0;accent-color:var(--led)}
+.range output{width:30px;text-align:right}
+.swatch{display:flex;align-items:center;gap:10px}
+input[type=color]{width:44px;height:32px;padding:2px;border:1px solid var(--line);border-radius:6px;background:var(--paper);cursor:pointer}
+.swatch code{font:inherit;color:var(--muted)}
+
+/* dpi strip */
+.stages{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+@media (max-width:480px){.stages{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.stagecell{border:1px solid var(--line);border-radius:8px;padding:6px 6px 8px;text-align:center;background:var(--paper)}
+.stagecell.on{border-color:var(--led);box-shadow:inset 0 0 0 1px var(--led)}
+.stagecell label{display:flex;justify-content:center;align-items:center;gap:4px;font-size:13px;color:var(--muted);cursor:pointer}
+.stagecell input[type=radio]{accent-color:var(--led);margin:0}
+.stagecell input[type=number]{width:100%;border:0;background:transparent;text-align:center;font-weight:600;font-size:15px;
+  padding:4px 0 0;-moz-appearance:textfield}
+.stagecell input::-webkit-inner-spin-button{display:none}
+.stagecell input[type=number]:focus-visible{outline:2px solid var(--led);border-radius:4px}
+
+/* action bar */
+.bar{position:fixed;left:0;right:0;bottom:0;background:color-mix(in srgb,var(--surface) 92%,transparent);
+  backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+.bar div{max-width:1120px;margin:0 auto;padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.bar p{margin:0 auto 0 0;color:var(--muted);font-size:14px}
+@media (max-width:560px){.bar p{flex-basis:100%}}
 </style>
 </head>
 <body>
 <main>
 <header>
-  <h1>MM731 Control</h1>
-  <button id="connect" class="primary">Connect mouse</button>
+  <h1>MM731 <small>Control</small></h1>
+  <span class="pill" id="pill" role="status"><i></i><span id="status">Not connected</span></span>
+  <button class="btn primary" id="connect">Connect mouse</button>
 </header>
-<p id="status">Close MasterPlus+ first, then click “Connect mouse” and pick the Cooler Master device.</p>
 
-<div class="grid">
+<div class="layout">
+  <section class="panel" aria-labelledby="h-buttons">
+    <h2 id="h-buttons">Buttons</h2>
+    <div class="stage">
+      <svg class="mouse" viewBox="0 0 600 560" role="group" aria-label="MM731 top view. Pick a button to remap it.">
+        <defs><filter id="blur" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="14"/></filter></defs>
+        <path class="shell" d="M300 30C378 30 416 92 421 190C426 290 418 390 400 432C386 462 346 474 300 474C254 474 214 462 200 432C182 390 174 290 179 190C184 92 222 30 300 30Z"/>
+        <g class="lit static" id="lit">
+          <circle class="glow" cx="300" cy="385" r="26" id="glow"/>
+          <path class="logo" d="M300 366l17 10v19l-17 10-17-10v-19z"/>
+        </g>
+
+        <g class="hot" data-hot="left" tabindex="0" role="button" aria-label="Left button">
+          <path class="face" d="M296 34C232 36 190 92 184 190L186 214C222 224 260 228 296 228Z"/>
+        </g>
+        <g class="hot" data-hot="right" tabindex="0" role="button" aria-label="Right button">
+          <path class="face" d="M304 34C368 36 410 92 416 190L414 214C378 224 340 228 304 228Z"/>
+        </g>
+        <g class="hot" data-hot="wheel" tabindex="0" role="button" aria-label="Scroll wheel">
+          <rect class="face" x="284" y="78" width="32" height="70" rx="16"/>
+        </g>
+        <g class="hot" data-hot="forward" tabindex="0" role="button" aria-label="Front side button">
+          <rect class="face" x="164" y="238" width="22" height="52" rx="9"/>
+        </g>
+        <g class="hot" data-hot="back" tabindex="0" role="button" aria-label="Rear side button">
+          <rect class="face" x="167" y="298" width="22" height="52" rx="9"/>
+        </g>
+        <g class="hot under" data-hot="dpi" tabindex="0" role="button" aria-label="DPI button, on the underside">
+          <rect class="face" x="252" y="500" width="96" height="28" rx="14"/>
+        </g>
+        <text class="caption" x="300" y="550" text-anchor="middle">Underside</text>
+
+        <path class="leader" d="M232 130H154"/>
+        <path class="leader" d="M164 264H154"/>
+        <path class="leader" d="M167 324H154"/>
+        <path class="leader" d="M316 112H446"/>
+        <path class="leader" d="M398 200L418 236H446"/>
+        <path class="leader" d="M348 514H446"/>
+
+        <text class="tag" data-tag="left" x="150" y="126" text-anchor="end"></text>
+        <text class="tag" data-tag="forward" x="150" y="260" text-anchor="end"></text>
+        <text class="tag" data-tag="back" x="150" y="320" text-anchor="end"></text>
+        <text class="tag" data-tag="wheel" x="450" y="108"></text>
+        <text class="tag" data-tag="right" x="450" y="232"></text>
+        <text class="tag" data-tag="dpi" x="450" y="510"></text>
+      </svg>
+    </div>
+  </section>
+
   <div>
-    <section>
-      <h2>Lighting</h2>
-      <div class="row"><label for="mode">Mode</label>
-        <select id="mode"><option>static</option><option>breathing</option><option>cycle</option><option>off</option></select></div>
-      <div class="row"><label for="colour">Colour</label><input type="color" id="colour" value="#ff0000"></div>
-      <div class="row"><label for="bright">Brightness</label><input type="range" id="bright" min="0" max="255"><span class="val" id="brightV"></span></div>
-      <div class="row"><label for="speed">Speed</label><input type="range" id="speed" min="1" max="5"><span class="val" id="speedV"></span></div>
+    <section class="panel editor" id="editor" aria-live="polite"></section>
+    <section class="panel" aria-labelledby="h-light">
+      <h2 id="h-light">Lighting</h2>
+      <div class="field"><span id="l-mode">Effect</span>
+        <div class="seg" role="radiogroup" aria-labelledby="l-mode" id="mode"></div></div>
+      <div class="field"><span>Colour</span>
+        <div class="swatch"><input type="color" id="colour" value="#6d35d6" aria-label="LED colour"><code id="colourV">#6d35d6</code></div></div>
+      <div class="field"><span>Brightness</span>
+        <div class="range"><input type="range" id="bright" min="0" max="255" value="255" aria-label="Brightness"><output id="brightV">255</output></div></div>
+      <div class="field"><span>Speed</span>
+        <div class="range"><input type="range" id="speed" min="1" max="5" value="3" aria-label="Effect speed"><output id="speedV">3</output></div></div>
     </section>
-    <section>
-      <h2>Performance</h2>
-      <table><thead><tr><th>Stage</th><th>DPI</th><th>Active</th></tr></thead><tbody id="dpi"></tbody></table>
-      <div class="row"><label for="poll">Polling</label>
-        <select id="poll"><option value="125">125 Hz</option><option value="250">250 Hz</option><option value="500">500 Hz</option><option value="1000">1000 Hz</option></select></div>
-      <div class="row"><label for="lod">Lift-off</label><select id="lod"><option>low</option><option>high</option></select></div>
+
+    <section class="panel" aria-labelledby="h-perf">
+      <h2 id="h-perf">Sensitivity</h2>
+      <p class="sub">The DPI button steps through these stages. The selected one is what the mouse starts with.</p>
+      <div class="stages" id="stages" style="margin-top:12px"></div>
+      <div class="field"><span id="l-poll">Polling rate</span>
+        <div class="seg" role="radiogroup" aria-labelledby="l-poll" id="poll"></div></div>
+      <div class="field"><span id="l-lod">Lift-off</span>
+        <div class="seg" role="radiogroup" aria-labelledby="l-lod" id="lod"></div></div>
     </section>
   </div>
-  <section>
-    <h2>Buttons</h2>
-    <table><thead><tr><th>Button</th><th>Normal</th><th>Hold middle +</th></tr></thead><tbody id="buttons"></tbody></table>
-    <p class="hint">Left click and the combo key (middle in the right column) are locked so you can't lock yourself out.</p>
-  </section>
 </div>
-
-<div class="actions">
-  <button id="reload" disabled>Reload</button>
-  <button id="apply" disabled>Apply</button>
-  <button id="save" class="primary" disabled>Save to mouse</button>
-</div>
-<p class="hint" style="text-align:right">Apply = live, lost on power-off. Save to mouse = written to the mouse's memory.</p>
 </main>
+
+<nav class="bar" aria-label="Actions">
+  <div>
+    <p>Apply tries changes until the mouse is switched off. Save to mouse keeps them.</p>
+    <button class="btn" id="reload" disabled>Reload</button>
+    <button class="btn" id="apply" disabled>Apply</button>
+    <button class="btn primary" id="save" disabled>Save to mouse</button>
+  </div>
+</nav>
 
 <script>
 "use strict";
@@ -89,12 +228,16 @@ const POLL_CODES = {125: 1, 250: 2, 500: 3, 1000: 4}, LOD_CODES = {low: 0, high:
 const MODES = ["static", "breathing", "cycle", "off"];
 const BASE = ["left", "right", "middle", "back", "forward", "dpi", "wheel-up", "wheel-down"];
 const BUTTONS = [...BASE, ...BASE.map(b => "combo-" + b)];
-const LOCKED = new Set(["left", "combo-middle"]);
-const FUNCS = {none: [0, 0], left: [0xA5, 0], right: [0xA6, 0], middle: [0xA7, 0], back: [0xA9, 0],
-  forward: [0xAA, 0], "dpi-cycle": [0xFD, 0x15], "scroll-up": [0xAD, 0x01], "scroll-down": [0xAD, 0xFF],
-  "play-pause": [0xEC, 0], "volume-up": [0xE8, 0], "volume-down": [0xE9, 0], mute: [0xEA, 0], stop: [0xEB, 0],
-  "next-track": [0xED, 0], "prev-track": [0xEE, 0], "led-mode": [0xFD, 0x2A], "led-color": [0xFD, 0x20],
-  "combo-key": [0xFE, 0]};
+const LOCKED = new Set(["left"]);
+const GROUPS = {
+  Mouse: {left: [0xA5, 0], right: [0xA6, 0], middle: [0xA7, 0], back: [0xA9, 0], forward: [0xAA, 0],
+    "scroll-up": [0xAD, 0x01], "scroll-down": [0xAD, 0xFF], "dpi-cycle": [0xFD, 0x15], "combo-key": [0xFE, 0],
+    none: [0, 0]},
+  Media: {"play-pause": [0xEC, 0], stop: [0xEB, 0], "next-track": [0xED, 0], "prev-track": [0xEE, 0],
+    "volume-up": [0xE8, 0], "volume-down": [0xE9, 0], mute: [0xEA, 0]},
+  Lighting: {"led-mode": [0xFD, 0x2A], "led-color": [0xFD, 0x20]},
+  Keyboard: {},
+};
 const KEYS = {};
 for (let i = 0; i < 26; i++) KEYS[String.fromCharCode(97 + i)] = 0x04 + i;
 for (let i = 0; i < 10; i++) KEYS[String((i + 1) % 10)] = 0x1E + i;
@@ -102,7 +245,8 @@ for (let i = 0; i < 12; i++) KEYS["f" + (i + 1)] = 0x3A + i;
 Object.assign(KEYS, {enter: 0x28, esc: 0x29, backspace: 0x2A, tab: 0x2B, space: 0x2C, printscreen: 0x46,
   insert: 0x49, home: 0x4A, pageup: 0x4B, delete: 0x4C, end: 0x4D, pagedown: 0x4E, "right-arrow": 0x4F,
   "left-arrow": 0x50, "down-arrow": 0x51, "up-arrow": 0x52, ctrl: 0xE0, shift: 0xE1, alt: 0xE2, win: 0xE3});
-for (const [k, v] of Object.entries(KEYS)) FUNCS["key:" + k] = [v, 0];
+for (const [k, v] of Object.entries(KEYS)) GROUPS.Keyboard["key:" + k] = [v, 0];
+const FUNCS = Object.assign({}, ...Object.values(GROUPS));
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const hex = a => [...a].map(b => b.toString(16).padStart(2, "0")).join(" ");
@@ -135,7 +279,7 @@ class Mouse {
       const r = await reply;
       if (r) return r;
     }
-    if (strict) throw new Error(`no reply to ${hex(bytes.slice(0, 3))}`);
+    if (strict) throw new Error(`the mouse didn't answer (${hex(bytes.slice(0, 3))})`);
     return null;
   }
   write(bytes) { return this.xfer(bytes, [bytes[0] + 1, bytes[1]], false); }   // echo is cmd+1
@@ -160,7 +304,7 @@ class Mouse {
       await sleep(50);
       if ((await this.xfer([0x4C, 0x81, 0x07], [0x4D, 0x81, 0x07]))[3] === m) return;
     }
-    throw new Error(`mouse did not switch to lighting mode ${mode}`);
+    throw new Error(`the mouse didn't switch to the ${mode} effect`);
   }
   async readBlock() {
     await this.init();
@@ -187,54 +331,148 @@ class Mouse {
   save() { return this.xfer([0x54, 0x81, 0x01], [0x55, 0x81], false); }
 }
 
-// ---- UI ----
+// ---- UI state ----
 const $ = id => document.getElementById(id);
-let mouse = null, per = {}, busy = false;
+let mouse = null, per = {}, busy = false, selected = "dpi";
+const btn = {};          // slot -> function name, filled from the mouse on load
+const HOT = {
+  left:    {title: "Left button", slots: [["left", "Press"]]},
+  right:   {title: "Right button", slots: [["right", "Press"]]},
+  wheel:   {title: "Scroll wheel", slots: [["middle", "Click"], ["wheel-up", "Scroll up"], ["wheel-down", "Scroll down"]]},
+  dpi:     {title: "DPI button", slots: [["dpi", "Press"]]},
+  forward: {title: "Front side button", slots: [["forward", "Press"]]},
+  back:    {title: "Rear side button", slots: [["back", "Press"]]},
+};
+const NICE = {none: "Disabled", "dpi-cycle": "DPI cycle", "led-mode": "LED effect", "led-color": "LED colour",
+  "play-pause": "Play / pause", "prev-track": "Previous track", "next-track": "Next track", "combo-key": "Combo key",
+  "volume-up": "Volume up", "volume-down": "Volume down", "scroll-up": "Scroll up", "scroll-down": "Scroll down",
+  left: "Left click", right: "Right click", middle: "Middle click", back: "Back", forward: "Forward"};
+function nice(v) {
+  if (NICE[v]) return NICE[v];
+  if (v.startsWith("key:")) { const k = v.slice(4); return "Key " + (k.length <= 3 ? k.toUpperCase() : k.replace("-", " ")); }
+  if (v.startsWith("raw ")) return "Code " + v.slice(4);
+  if (v.startsWith("macro ")) return "Macro " + v.split(" ")[1];
+  return v[0].toUpperCase() + v.slice(1).replace(/-/g, " ");
+}
+function labelOf([a, b]) {
+  const name = Object.keys(FUNCS).find(k => FUNCS[k][0] === a && FUNCS[k][1] === b);
+  return name || (a === 0xFF ? `macro ${b}` : `raw ${hex([a, b])}`);
+}
 
-function status(msg, kind = "") { $("status").textContent = msg; $("status").className = kind; }
+function status(msg, kind = "") { $("status").textContent = msg; $("pill").className = "pill " + kind; }
 const toHex = rgb => "#" + rgb.map(v => v.toString(16).padStart(2, "0")).join("");
 const fromHex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
 const u16 = (p, o) => p[o] | (p[o + 1] << 8);
 
-function buildUI() {
-  $("dpi").innerHTML = Array.from({length: DPI_STAGES}, (_, k) =>
-    `<tr><td>${k + 1}</td><td><input type="number" id="dpi${k}" min="100" max="19000" step="100"></td>` +
-    `<td><input type="radio" name="active" value="${k}" aria-label="Stage ${k + 1} active"></td></tr>`).join("");
-  const opts = Object.keys(FUNCS).filter(f => !f.startsWith("key:")).sort()
-    .concat(Object.keys(FUNCS).filter(f => f.startsWith("key:")));
-  $("buttons").innerHTML = BASE.map(b => `<tr><td>${b}</td>` + [b, "combo-" + b].map(n =>
-    `<td><select id="btn-${n}" ${LOCKED.has(n) ? "disabled" : ""} aria-label="${n}">` +
-    opts.map(o => `<option>${o}</option>`).join("") + `</select></td>`).join("") + `</tr>`).join("");
-  for (const id of ["bright", "speed"]) $(id).addEventListener("input", () => $(id + "V").textContent = $(id).value);
-  $("mode").addEventListener("change", showMode);
+function seg(id, name, values, labels = values) {
+  $(id).innerHTML = values.map((v, i) =>
+    `<label><input type="radio" name="${name}" value="${v}"><span>${labels[i]}</span></label>`).join("");
 }
+const segVal = name => document.querySelector(`input[name=${name}]:checked`)?.value;
+const setSeg = (name, v) => { const r = document.querySelector(`input[name=${name}][value="${v}"]`); if (r) r.checked = true; };
 
+// ---- rendering ----
+function optionsFor(current, lockedTo) {
+  if (lockedTo) return `<option value="${lockedTo}">${nice(lockedTo)}</option>`;
+  const extra = FUNCS[current] ? "" : `<option value="${current}">${nice(current)}</option>`;
+  return extra + Object.entries(GROUPS).map(([g, fs]) => `<optgroup label="${g}">` +
+    Object.keys(fs).map(f => `<option value="${f}"${f === current ? " selected" : ""}>${nice(f)}</option>`).join("") +
+    `</optgroup>`).join("");
+}
+function renderEditor() {
+  const h = HOT[selected];
+  if (!btn.left) {
+    $("editor").innerHTML = `<h3>${h.title}</h3><p class="note">Connect the mouse to see and change what this button does.</p>`;
+    return;
+  }
+  const rows = h.slots.map(([slot, label]) => {
+    const cells = [slot, "combo-" + slot].map(n => {
+      const locked = LOCKED.has(n) ? btn[n] : null;
+      return `<td><select data-slot="${n}" aria-label="${h.title}: ${label}${n.startsWith("combo-") ? " with combo key" : ""}"` +
+        `${locked ? " disabled" : ""}>${optionsFor(btn[n], locked)}</select></td>`;
+    }).join("");
+    return `<tr><td>${label}</td>${cells}</tr>`;
+  }).join("");
+  const note = selected === "left" ? "Left click on its own stays as it is so the mouse remains usable."
+    : "The second column is what the button does while you hold the combo key. Any button can be the combo key.";
+  $("editor").innerHTML = `<h3>${h.title}</h3>
+    <table><thead><tr><th></th><th>On its own</th><th>With combo key</th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="note">${note}</p>`;
+  $("editor").querySelectorAll("select").forEach(s => s.addEventListener("change", () => { btn[s.dataset.slot] = s.value; renderTags(); }));
+}
+function renderTags() {
+  for (const [hot, h] of Object.entries(HOT)) {
+    const t = document.querySelector(`[data-tag=${hot}]`);
+    const slot = h.slots[0][0];
+    const x = t.getAttribute("x");
+    const alt = btn[slot] ? "Combo: " + nice(btn["combo-" + slot]) : "";
+    t.innerHTML = `<tspan x="${x}">${btn[slot] ? nice(btn[slot]) : h.title}</tspan><tspan class="alt" x="${x}" dy="18">${alt}</tspan>`;
+    t.classList.toggle("sel", hot === selected);
+  }
+  document.querySelectorAll(".hot").forEach(g => {
+    g.classList.toggle("sel", g.dataset.hot === selected);
+    g.setAttribute("aria-pressed", g.dataset.hot === selected);
+  });
+}
+function select(hot) { selected = hot; renderEditor(); renderTags(); }
+
+function paintLed() {
+  const c = $("colour").value, [r, g, b] = fromHex(c);
+  document.documentElement.style.setProperty("--led", c);
+  document.documentElement.style.setProperty("--led-ink", (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? "#111" : "#fff");
+  $("colourV").textContent = c;
+  const mode = segVal("mode") || "static";
+  $("lit").setAttribute("class", "lit " + mode);
+  $("glow").style.opacity = 0.25 + 0.75 * $("bright").value / 255;
+  const dur = [6, 4.5, 3, 2, 1.2][$("speed").value - 1];
+  $("lit").style.animationDuration = mode === "cycle" ? dur * 2 + "s" : "";
+  $("lit").querySelectorAll("*").forEach(n => n.style.animationDuration = mode === "breathing" ? dur + "s" : "");
+}
 function showMode() {
-  const m = MODES.indexOf($("mode").value);
-  if (!per[m]) return;
-  $("colour").value = toHex(per[m].rgb);
-  $("bright").value = per[m].bright;
-  $("speed").value = Math.min(Math.max(per[m].speed + 1, 1), 5);
+  const m = MODES.indexOf(segVal("mode"));
+  if (per[m]) {
+    $("colour").value = toHex(per[m].rgb);
+    $("bright").value = per[m].bright;
+    $("speed").value = Math.min(Math.max(per[m].speed + 1, 1), 5);
+  }
   for (const id of ["bright", "speed"]) $(id + "V").textContent = $(id).value;
+  paintLed();
+}
+function markActive() {
+  document.querySelectorAll(".stagecell").forEach((c, k) => c.classList.toggle("on", segVal("active") === String(k)));
 }
 
-function labelOf(code) {
-  const name = Object.keys(FUNCS).find(k => FUNCS[k][0] === code[0] && FUNCS[k][1] === code[1]);
-  if (name) return name;
-  return code[0] === 0xFF ? `macro ${code[1]} (keep)` : `raw ${hex(code)}`;
+function buildUI() {
+  seg("mode", "mode", MODES, ["Static", "Breathing", "Colour cycle", "Off"]);
+  seg("poll", "poll", Object.keys(POLL_CODES), Object.keys(POLL_CODES).map(h => h + " Hz"));
+  seg("lod", "lod", Object.keys(LOD_CODES), ["Low", "High"]);
+  setSeg("mode", "static"); setSeg("poll", "1000"); setSeg("lod", "low");
+  $("stages").innerHTML = Array.from({length: DPI_STAGES}, (_, k) =>
+    `<div class="stagecell"><label><input type="radio" name="active" value="${k}">${k + 1}</label>` +
+    `<input type="number" id="dpi${k}" min="100" max="19000" step="100" aria-label="Stage ${k + 1} DPI" placeholder="–"></div>`).join("");
+  document.querySelectorAll("input[name=active]").forEach(r => r.addEventListener("change", markActive));
+  document.querySelectorAll("input[name=mode]").forEach(r => r.addEventListener("change", showMode));
+  for (const id of ["bright", "speed"]) $(id).addEventListener("input", () => { $(id + "V").textContent = $(id).value; paintLed(); });
+  $("colour").addEventListener("input", paintLed);
+  document.querySelectorAll(".hot").forEach(g => {
+    g.addEventListener("click", () => select(g.dataset.hot));
+    g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(g.dataset.hot); } });
+  });
+  select(selected);
+  paintLed();
 }
 
+// ---- device actions ----
 function setBusy(b) {
   busy = b;
   for (const id of ["reload", "apply", "save"]) $(id).disabled = b || !mouse;
 }
-
 async function run(label, fn) {
   if (busy) return;
   setBusy(true);
   status(label + "…");
   try { await fn(); }
-  catch (e) { status(`Error: ${e.message}. Is MasterPlus+ closed and the mouse awake? Try Reload.`, "err"); }
+  catch (e) { status(`Couldn't finish: ${e.message}. Close MasterPlus+, move the mouse to wake it, then Reload.`, "err"); }
   finally { setBusy(false); }
 }
 
@@ -243,50 +481,49 @@ async function reload() {
   const p = await mouse.readBlock();
   const s = await mouse.readButtons();
   per = L.per;
-  $("mode").value = MODES[L.mode] || "static";
+  setSeg("mode", MODES[L.mode] || "static");
   showMode();
   for (let k = 0; k < DPI_STAGES; k++) $("dpi" + k).value = u16(p, DPI_TABLE + 4 * k);
-  const r = document.querySelector(`input[name=active][value="${p[DPI_ACTIVE]}"]`);
-  if (r) r.checked = true;
-  $("poll").value = Object.keys(POLL_CODES).find(h => POLL_CODES[h] === p[POLL]) || "1000";
-  $("lod").value = Object.keys(LOD_CODES).find(n => LOD_CODES[n] === p[LOD]) || "low";
-  BUTTONS.forEach((b, i) => {
-    const sel = $("btn-" + b), label = labelOf([s[1 + 2 * i], s[2 + 2 * i]]);
-    if (![...sel.options].some(o => o.value === label)) sel.add(new Option(label, label), 0);
-    sel.value = label;
-  });
-  status(`Loaded from ${mouse.dev.productName || "mouse"}.`, "ok");
+  setSeg("active", p[DPI_ACTIVE]);
+  markActive();
+  setSeg("poll", Object.keys(POLL_CODES).find(h => POLL_CODES[h] === p[POLL]) || "1000");
+  setSeg("lod", Object.keys(LOD_CODES).find(n => LOD_CODES[n] === p[LOD]) || "low");
+  BUTTONS.forEach((b, i) => btn[b] = labelOf([s[1 + 2 * i], s[2 + 2 * i]]));
+  select(selected);
+  status("Loaded from the mouse", "ok");
 }
 
 async function apply(save) {
   const dpis = [];
   for (let k = 0; k < DPI_STAGES; k++) {
     const x = Number($("dpi" + k).value);
-    if (!Number.isInteger(x) || x < 100 || x > 19000 || x % 100) throw new Error(`DPI stage ${k + 1} must be 100–19000 in steps of 100`);
+    if (!Number.isInteger(x) || x < 100 || x > 19000 || x % 100) {
+      $("dpi" + k).focus();
+      throw new Error(`stage ${k + 1} needs a DPI from 100 to 19000, in steps of 100`);
+    }
     dpis.push(x);
   }
-  const mode = $("mode").value, rgb = fromHex($("colour").value);
+  const mode = segVal("mode"), rgb = fromHex($("colour").value);
   const bright = Number($("bright").value), speed = Number($("speed").value);
   await mouse.setLighting(mode, rgb, bright, speed);
   if (mode !== "off") per[MODES.indexOf(mode)] = {bright, speed: speed - 1, rgb};
 
   const p = await mouse.readBlock(), old = p.join();
   dpis.forEach((x, k) => { const o = DPI_TABLE + 4 * k; p[o] = p[o + 2] = x & 0xFF; p[o + 1] = p[o + 3] = x >> 8; });
-  const act = document.querySelector("input[name=active]:checked");
-  if (act) p[DPI_ACTIVE] = Number(act.value);
-  p[POLL] = POLL_CODES[$("poll").value];
-  p[LOD] = LOD_CODES[$("lod").value];
+  if (segVal("active") != null) p[DPI_ACTIVE] = Number(segVal("active"));
+  p[POLL] = POLL_CODES[segVal("poll")];
+  p[LOD] = LOD_CODES[segVal("lod")];
   if (p.join() !== old) await mouse.writeBlock(p);
 
   const s = await mouse.readButtons(), oldS = s.join();
   BUTTONS.forEach((b, i) => {
-    const v = $("btn-" + b).value;
+    const v = btn[b];
     const code = FUNCS[v] || (v.startsWith("raw ") ? v.slice(4).split(" ").map(h => parseInt(h, 16)) : null);
-    if (code) { s[1 + 2 * i] = code[0]; s[2 + 2 * i] = code[1]; }
+    if (code && !LOCKED.has(b)) { s[1 + 2 * i] = code[0]; s[2 + 2 * i] = code[1]; }
   });
   if (s.join() !== oldS) await mouse.writeButtons(s);
   if (save) await mouse.save();
-  status(save ? "Saved to mouse." : "Applied live (not saved: lost on power-off).", "ok");
+  status(save ? "Saved to mouse" : "Applied. Save to mouse to keep it after power-off", "ok");
 }
 
 async function useDevice(dev) {
@@ -294,31 +531,33 @@ async function useDevice(dev) {
   mouse = new Mouse(dev);
   setBusy(false);
   $("connect").textContent = "Connected";
-  await run("Reading mouse", reload);
+  $("connect").classList.remove("primary");
+  await run("Reading the mouse", reload);
 }
-
-function vendorOnly(devs) {
-  return devs.filter(d => d.vendorId === VID && d.collections.some(c => c.usagePage === USAGE_PAGE));
-}
+const vendorOnly = devs => devs.filter(d => d.vendorId === VID && d.collections.some(c => c.usagePage === USAGE_PAGE));
 
 buildUI();
 if (!("hid" in navigator)) {
-  status("This browser has no WebHID. Open this page in Chrome or Edge.", "err");
+  status("This browser can't talk to USB devices. Open the page in Chrome or Edge.", "err");
   $("connect").disabled = true;
 } else {
+  status("Close MasterPlus+, then connect the mouse");
   $("connect").addEventListener("click", async () => {
     try {
       const devs = vendorOnly(await navigator.hid.requestDevice({filters: [{vendorId: VID, usagePage: USAGE_PAGE}]}));
       if (devs.length) await useDevice(devs[0]);
-      else status("No device picked.");
-    } catch (e) { status(`Could not open the mouse: ${e.message}`, "err"); }
+      else status("No mouse picked. Choose the Cooler Master device in the list");
+    } catch (e) { status(`Couldn't open the mouse: ${e.message}`, "err"); }
   });
-  $("reload").addEventListener("click", () => run("Reading mouse", reload));
+  $("reload").addEventListener("click", () => run("Reading the mouse", reload));
   $("apply").addEventListener("click", () => run("Applying", () => apply(false)));
   $("save").addEventListener("click", () => run("Saving", () => apply(true)));
   navigator.hid.addEventListener("disconnect", e => {
-    if (mouse && e.device === mouse.dev) { mouse = null; setBusy(false); $("connect").textContent = "Connect mouse";
-      status("Mouse disconnected. Plug it back in and click Connect.", "err"); }
+    if (mouse && e.device === mouse.dev) {
+      mouse = null; setBusy(false);
+      $("connect").textContent = "Connect mouse"; $("connect").classList.add("primary");
+      status("Mouse disconnected. Plug it back in and connect again", "err");
+    }
   });
   navigator.hid.getDevices().then(d => { const v = vendorOnly(d); if (v.length) useDevice(v[0]).catch(() => {}); });
 }

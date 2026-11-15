@@ -18,8 +18,8 @@ Replace Cooler Master MasterPlus+, which keeps crashing and freezing, with a sma
 ## Files
 - `mm731.py`: CLI with `list`, `probe` (read-only queries in both families), `color`, `off`, `raw`. Flags: `--family 730|712`, `--interface`, `--usage-page`, `--pid`, `--dry-run`, `--save`.
 - `capdiff.py`: extracts host-to-device packets from `.pcapng` files with tshark and diffs two captures byte by byte.
-- `mm731_gui.py` + `MM731.bat`: tkinter desktop app (lighting, DPI, polling, lift-off, 16 button slots; Apply = live, Save to mouse = flash). Opens a short HID session per action. Read path and no-op Apply verified live.
-- `mm731.html`: single-file WebHID version of the app (Chrome/Edge, no install). JS port of the same protocol; keep it in sync with `mm731.py` when the protocol changes. Not yet verified on the mouse.
+- `mm731.html`: **the main app.** Single-file WebHID page (Chrome/Edge, no install): clickable SVG mouse for remapping (combo layer, media keys, keyboard keys, movable combo key), lighting with live LED preview, 7 DPI stages, polling, lift-off. Apply = live, Save to mouse = flash. JS port of the protocol; keep it in sync with `mm731.py`. Verified on the mouse by the user.
+- The tkinter desktop app was removed (2026-11-15); the user chose the webpage only.
 - `test_dpi.py`: offline checks of the block/button codecs against captured bytes.
 - `README.md`: user-facing setup and usage guide.
 - Wireless mouse sleeps when idle and drops the first request; `Dev.xfer` resends once on an empty read.
